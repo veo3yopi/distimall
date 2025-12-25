@@ -16,12 +16,12 @@ class CategoryRepository {
   }
 
   static const List<CategoryItem> dummyCategories = [
-    CategoryItem(name: 'Makanan'),
-    CategoryItem(name: 'Pakaian'),
-    CategoryItem(name: 'Kesehatan'),
-    CategoryItem(name: 'Kecantikan'),
-    CategoryItem(name: 'Craft'),
-    CategoryItem(name: 'Laundry'),
-    CategoryItem(name: 'Cellular'),
+    CategoryItem(id: 1, name: 'Makanan'),
+    CategoryItem(id: 2, name: 'Pakaian'),
+    CategoryItem(id: 3, name: 'Kesehatan'),
+    CategoryItem(id: 4, name: 'Kecantikan'),
+    CategoryItem(id: 5, name: 'Craft'),
+    CategoryItem(id: 6, name: 'Laundry'),
+    CategoryItem(id: 7, name: 'Cellular'),
   ];
 }

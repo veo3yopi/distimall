@@ -26,6 +26,17 @@ class ProductRepository {
         .toList();
   }
 
+  Future<List<ProductItem>> fetchByCategoryId(int categoryId) async {
+    final uri = Uri.parse(ApiConfig.productsEndpoint).replace(
+      queryParameters: {'category': categoryId.toString()},
+    );
+    final payload = await apiClient.getList(uri.toString());
+    return payload
+        .whereType<Map<String, dynamic>>()
+        .map(ProductItem.fromJson)
+        .toList();
+  }
+
   Future<ProductItem> fetchProductDetail(int id) async {
     final payload = await apiClient.getMap('${ApiConfig.productsEndpoint}$id');
     return ProductItem.fromJson(payload);

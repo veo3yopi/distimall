@@ -14,14 +14,17 @@ class ProductProvider extends ChangeNotifier {
   List<ProductItem> _featuredProducts;
   bool _isLoading = false;
   String? _errorMessage;
+  int? _categoryId;
 
   List<ProductItem> get products => _products;
   List<ProductItem> get featuredProducts => _featuredProducts;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  int? get categoryId => _categoryId;
 
   Future<void> loadProducts() async {
     _isLoading = true;
+    _categoryId = null;
     notifyListeners();
     try {
       final results = await _repository.fetchProducts();
@@ -49,9 +52,31 @@ class ProductProvider extends ChangeNotifier {
       return;
     }
     _isLoading = true;
+    _categoryId = null;
     notifyListeners();
     try {
       final results = await _repository.searchProducts(trimmed);
+      _products = results;
+      _errorMessage = null;
+    } catch (error) {
+      _products = ProductRepository.dummyFeaturedProducts;
+      _errorMessage = error.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> filterByCategoryId(int? categoryId) async {
+    if (categoryId == null) {
+      await loadProducts();
+      return;
+    }
+    _isLoading = true;
+    _categoryId = categoryId;
+    notifyListeners();
+    try {
+      final results = await _repository.fetchByCategoryId(categoryId);
       _products = results;
       _errorMessage = null;
     } catch (error) {

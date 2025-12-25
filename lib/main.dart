@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'data/models/category_item.dart';
 import 'data/models/product_item.dart';
 import 'data/repositories/banner_repository.dart';
 import 'data/repositories/category_repository.dart';
@@ -97,6 +98,7 @@ class RootPage extends StatefulWidget {
 class _RootPageState extends State<RootPage> {
   int _currentIndex = 0;
   String? _productsQuery;
+  int? _categoryId;
 
   @override
   Widget build(BuildContext context) {
@@ -105,11 +107,22 @@ class _RootPageState extends State<RootPage> {
         onSearchSubmitted: (query) {
           setState(() {
             _productsQuery = query;
+            _categoryId = null;
+            _currentIndex = 1;
+          });
+        },
+        onCategorySelected: (categoryId) {
+          setState(() {
+            _categoryId = categoryId;
+            _productsQuery = null;
             _currentIndex = 1;
           });
         },
       ),
-      ProductsPage(initialQuery: _productsQuery),
+      ProductsPage(
+        initialQuery: _productsQuery,
+        categoryId: _categoryId,
+      ),
       const _PlaceholderPage(title: 'Keranjang'),
       const _PlaceholderPage(title: 'Profil'),
     ];
@@ -162,9 +175,14 @@ class _RootPageState extends State<RootPage> {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.onSearchSubmitted});
+  const HomePage({
+    super.key,
+    required this.onSearchSubmitted,
+    required this.onCategorySelected,
+  });
 
   final ValueChanged<String> onSearchSubmitted;
+  final ValueChanged<int> onCategorySelected;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -318,6 +336,12 @@ class _HomePageState extends State<HomePage> {
                               return _CategoryItem(
                                 label: item.name,
                                 iconUrl: item.iconUrl,
+                                onTap: () {
+                                  final id = item.id;
+                                  if (id != null) {
+                                    widget.onCategorySelected(id);
+                                  }
+                                },
                               );
                             },
                             separatorBuilder: (_, _) =>
@@ -390,9 +414,10 @@ class _HomePageState extends State<HomePage> {
 }
 
 class ProductsPage extends StatefulWidget {
-  const ProductsPage({super.key, this.initialQuery});
+  const ProductsPage({super.key, this.initialQuery, this.categoryId});
 
   final String? initialQuery;
+  final int? categoryId;
 
   @override
   State<ProductsPage> createState() => _ProductsPageState();
@@ -413,8 +438,12 @@ class _ProductsPageState extends State<ProductsPage> {
       if (!mounted) {
         return;
       }
-      if ((widget.initialQuery ?? '').trim().isNotEmpty) {
-        productProvider.searchProducts(widget.initialQuery!.trim());
+      final query = widget.initialQuery?.trim() ?? '';
+      if (widget.categoryId != null) {
+        _selectedCategory = 'Semua';
+        productProvider.filterByCategoryId(widget.categoryId);
+      } else if (query.isNotEmpty) {
+        productProvider.searchProducts(query);
       } else {
         productProvider.loadProducts();
       }
@@ -427,13 +456,20 @@ class _ProductsPageState extends State<ProductsPage> {
     super.didUpdateWidget(oldWidget);
     final newQuery = widget.initialQuery?.trim() ?? '';
     final oldQuery = oldWidget.initialQuery?.trim() ?? '';
-    if (newQuery != oldQuery) {
+    final newCategoryId = widget.categoryId;
+    final oldCategoryId = oldWidget.categoryId;
+    if (newCategoryId != oldCategoryId || newQuery != oldQuery) {
       _searchController.text = newQuery;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
           return;
         }
-        if (newQuery.isNotEmpty) {
+        if (newCategoryId != null) {
+          if (_selectedCategory != 'Semua') {
+            setState(() => _selectedCategory = 'Semua');
+          }
+          context.read<ProductProvider>().filterByCategoryId(newCategoryId);
+        } else if (newQuery.isNotEmpty) {
           context.read<ProductProvider>().searchProducts(newQuery);
         } else {
           context.read<ProductProvider>().loadProducts();
@@ -547,6 +583,7 @@ class _CategoryFilter extends StatelessWidget {
 
   final String value;
   final ValueChanged<String> onChanged;
+  static const CategoryItem _emptyCategory = CategoryItem(name: '');
 
   @override
   Widget build(BuildContext context) {
@@ -588,6 +625,19 @@ class _CategoryFilter extends StatelessWidget {
               onChanged: (value) {
                 if (value != null) {
                   onChanged(value);
+                  if (value != 'Semua') {
+                    final category = provider.categories.firstWhere(
+                      (item) => item.name == value,
+                      orElse: () => _emptyCategory,
+                    );
+                    if (category.id != null) {
+                      context
+                          .read<ProductProvider>()
+                          .filterByCategoryId(category.id);
+                    }
+                  } else {
+                    context.read<ProductProvider>().loadProducts();
+                  }
                 }
               },
             ),
@@ -1325,52 +1375,61 @@ class _PromoCard extends StatelessWidget {
 }
 
 class _CategoryItem extends StatelessWidget {
-  const _CategoryItem({required this.label, this.iconUrl});
+  const _CategoryItem({
+    required this.label,
+    this.iconUrl,
+    this.onTap,
+  });
 
   final String label;
   final String? iconUrl;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final hasIcon = iconUrl != null && iconUrl!.isNotEmpty;
-    return Column(
-      children: [
-        Container(
-          width: 54,
-          height: 54,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-          child: hasIcon
-              ? ClipOval(
-                  child: Image.network(
-                    iconUrl!,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.category_outlined,
-                        color: Color(0xFF5E8E6F),
-                        size: 26,
-                      );
-                    },
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: hasIcon
+                ? ClipOval(
+                    child: Image.network(
+                      iconUrl!,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.category_outlined,
+                          color: Color(0xFF5E8E6F),
+                          size: 26,
+                        );
+                      },
+                    ),
+                  )
+                : const Icon(
+                    Icons.category_outlined,
+                    color: Color(0xFF5E8E6F),
+                    size: 26,
                   ),
-                )
-              : const Icon(
-                  Icons.category_outlined,
-                  color: Color(0xFF5E8E6F),
-                  size: 26,
-                ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
