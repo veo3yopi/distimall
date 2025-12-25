@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import '../../config/api_config.dart';
 import '../models/product_item.dart';
 import '../services/api_client.dart';
@@ -17,9 +15,19 @@ class ProductRepository {
         .toList();
   }
 
+  Future<List<ProductItem>> searchProducts(String query) async {
+    final uri = Uri.parse(ApiConfig.productsEndpoint).replace(
+      queryParameters: {'q': query},
+    );
+    final payload = await apiClient.getList(uri.toString());
+    return payload
+        .whereType<Map<String, dynamic>>()
+        .map(ProductItem.fromJson)
+        .toList();
+  }
+
   Future<ProductItem> fetchProductDetail(int id) async {
-    final payload =
-        await apiClient.getMap('${ApiConfig.productsEndpoint}$id');
+    final payload = await apiClient.getMap('${ApiConfig.productsEndpoint}$id');
     return ProductItem.fromJson(payload);
   }
 

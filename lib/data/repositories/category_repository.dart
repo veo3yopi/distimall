@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import '../../config/api_config.dart';
 import '../models/category_item.dart';
 import '../services/api_client.dart';

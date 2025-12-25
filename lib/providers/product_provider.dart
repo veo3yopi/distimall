@@ -41,4 +41,25 @@ class ProductProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> searchProducts(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      await loadProducts();
+      return;
+    }
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final results = await _repository.searchProducts(trimmed);
+      _products = results;
+      _errorMessage = null;
+    } catch (error) {
+      _products = ProductRepository.dummyFeaturedProducts;
+      _errorMessage = error.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

@@ -96,12 +96,20 @@ class RootPage extends StatefulWidget {
 
 class _RootPageState extends State<RootPage> {
   int _currentIndex = 0;
+  String? _productsQuery;
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const HomePage(),
-      const ProductsPage(),
+      HomePage(
+        onSearchSubmitted: (query) {
+          setState(() {
+            _productsQuery = query;
+            _currentIndex = 1;
+          });
+        },
+      ),
+      ProductsPage(initialQuery: _productsQuery),
       const _PlaceholderPage(title: 'Keranjang'),
       const _PlaceholderPage(title: 'Profil'),
     ];
@@ -154,13 +162,16 @@ class _RootPageState extends State<RootPage> {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, required this.onSearchSubmitted});
+
+  final ValueChanged<String> onSearchSubmitted;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  final TextEditingController _searchController = TextEditingController();
   @override
   void initState() {
     super.initState();
@@ -178,6 +189,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
@@ -191,18 +208,36 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        'Cari di Disty Mall..',
-                        style: TextStyle(
-                          color: Color(0xFF7A9D86),
+                      child: TextField(
+                        controller: _searchController,
+                        textInputAction: TextInputAction.search,
+                        onSubmitted: (value) {
+                          final query = value.trim();
+                          if (query.isEmpty) {
+                            return;
+                          }
+                          widget.onSearchSubmitted(query);
+                          _searchController.clear();
+                        },
+                        decoration: const InputDecoration(
+                          hintText: 'Cari di Disty Mall..',
+                          hintStyle: TextStyle(
+                            color: Color(0xFF7A9D86),
+                            fontSize: 14,
+                          ),
+                          border: InputBorder.none,
+                          isCollapsed: true,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        style: const TextStyle(
+                          color: Color(0xFF3F3F3F),
                           fontSize: 14,
                         ),
                       ),
@@ -355,7 +390,9 @@ class _HomePageState extends State<HomePage> {
 }
 
 class ProductsPage extends StatefulWidget {
-  const ProductsPage({super.key});
+  const ProductsPage({super.key, this.initialQuery});
+
+  final String? initialQuery;
 
   @override
   State<ProductsPage> createState() => _ProductsPageState();
@@ -364,19 +401,51 @@ class ProductsPage extends StatefulWidget {
 class _ProductsPageState extends State<ProductsPage> {
   String _selectedCategory = 'Semua';
   _SortOption _sortOption = _SortOption.newest;
+  late final TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
     final productProvider = context.read<ProductProvider>();
     final categoryProvider = context.read<CategoryProvider>();
+    _searchController = TextEditingController(text: widget.initialQuery ?? '');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
-      productProvider.loadProducts();
+      if ((widget.initialQuery ?? '').trim().isNotEmpty) {
+        productProvider.searchProducts(widget.initialQuery!.trim());
+      } else {
+        productProvider.loadProducts();
+      }
       categoryProvider.loadCategories();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant ProductsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newQuery = widget.initialQuery?.trim() ?? '';
+    final oldQuery = oldWidget.initialQuery?.trim() ?? '';
+    if (newQuery != oldQuery) {
+      _searchController.text = newQuery;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        if (newQuery.isNotEmpty) {
+          context.read<ProductProvider>().searchProducts(newQuery);
+        } else {
+          context.read<ProductProvider>().loadProducts();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -389,6 +458,19 @@ class _ProductsPageState extends State<ProductsPage> {
             Text(
               'DAFTAR PRODUK',
               style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _ProductSearchBar(
+                controller: _searchController,
+                onSearch: (query) {
+                  context.read<ProductProvider>().searchProducts(query);
+                  if (query.trim().isNotEmpty) {
+                    setState(() => _selectedCategory = 'Semua');
+                  }
+                },
+              ),
             ),
             const SizedBox(height: 12),
             Padding(
@@ -570,6 +652,82 @@ class _SortFilter extends StatelessWidget {
               onChanged(value);
             }
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductSearchBar extends StatefulWidget {
+  const _ProductSearchBar({
+    required this.controller,
+    required this.onSearch,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onSearch;
+
+  @override
+  State<_ProductSearchBar> createState() => _ProductSearchBarState();
+}
+
+class _ProductSearchBarState extends State<_ProductSearchBar> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleChange);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleChange);
+    super.dispose();
+  }
+
+  void _handleChange() {
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasText = widget.controller.text.trim().isNotEmpty;
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: TextField(
+        controller: widget.controller,
+        textInputAction: TextInputAction.search,
+        onSubmitted: (value) => widget.onSearch(value),
+        decoration: InputDecoration(
+          hintText: 'Cari produk..',
+          hintStyle: const TextStyle(
+            color: Color(0xFF7A9D86),
+            fontSize: 14,
+          ),
+          prefixIcon: const Padding(
+            padding: EdgeInsets.only(left: 12, right: 6),
+            child: Icon(Icons.search, color: Color(0xFF3F3F3F), size: 20),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          suffixIcon: hasText
+              ? IconButton(
+                  icon: const Icon(Icons.close, color: Color(0xFF7A9D86)),
+                  onPressed: () {
+                    widget.controller.clear();
+                    widget.onSearch('');
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+        style: const TextStyle(
+          color: Color(0xFF3F3F3F),
+          fontSize: 14,
         ),
       ),
     );
