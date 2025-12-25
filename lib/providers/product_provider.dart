@@ -1,0 +1,37 @@
+import 'package:flutter/foundation.dart';
+
+import '../data/models/product_item.dart';
+import '../data/repositories/product_repository.dart';
+
+class ProductProvider extends ChangeNotifier {
+  ProductProvider({required ProductRepository repository})
+      : _repository = repository,
+        _featuredProducts = ProductRepository.dummyFeaturedProducts;
+
+  final ProductRepository _repository;
+  List<ProductItem> _featuredProducts;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  List<ProductItem> get featuredProducts => _featuredProducts;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  Future<void> loadFeaturedProducts() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final results = await _repository.fetchProducts();
+      final featured = results.where((item) => item.isFeatured == true).toList();
+      _featuredProducts =
+          featured.isNotEmpty ? featured : ProductRepository.dummyFeaturedProducts;
+      _errorMessage = null;
+    } catch (error) {
+      _featuredProducts = ProductRepository.dummyFeaturedProducts;
+      _errorMessage = error.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+}

@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 
 import 'data/repositories/banner_repository.dart';
 import 'data/repositories/category_repository.dart';
+import 'data/repositories/product_repository.dart';
 import 'data/services/api_client.dart';
 import 'providers/banner_provider.dart';
 import 'providers/category_provider.dart';
+import 'providers/product_provider.dart';
 
 void main() {
   runApp(
@@ -22,6 +24,11 @@ void main() {
             apiClient: context.read<ApiClient>(),
           ),
         ),
+        Provider<ProductRepository>(
+          create: (context) => ProductRepository(
+            apiClient: context.read<ApiClient>(),
+          ),
+        ),
         ChangeNotifierProvider<BannerProvider>(
           create: (context) => BannerProvider(
             repository: context.read<BannerRepository>(),
@@ -30,6 +37,11 @@ void main() {
         ChangeNotifierProvider<CategoryProvider>(
           create: (context) => CategoryProvider(
             repository: context.read<CategoryRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider<ProductProvider>(
+          create: (context) => ProductProvider(
+            repository: context.read<ProductRepository>(),
           ),
         ),
       ],
@@ -82,48 +94,19 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const _featuredProducts = [
-    {
-      'title': 'Maxi Dress Rayon',
-      'price': 'Rp2.500',
-      'oldPrice': null,
-      'tag': 'Paket Katering Sehat',
-      'icon': Icons.person,
-    },
-    {
-      'title': 'Tas Rajut',
-      'price': 'Rp125.000',
-      'oldPrice': 'Rp175.000',
-      'tag': 'Handmade',
-      'icon': Icons.shopping_bag,
-    },
-    {
-      'title': 'Herbal Syrup',
-      'price': 'Rp45.000',
-      'oldPrice': null,
-      'tag': 'Kesehatan',
-      'icon': Icons.local_drink,
-    },
-    {
-      'title': 'Tas Rajut Mini',
-      'price': 'Rp95.000',
-      'oldPrice': 'Rp120.000',
-      'tag': 'Limited',
-      'icon': Icons.shopping_bag_outlined,
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
     final bannerProvider = context.read<BannerProvider>();
     final categoryProvider = context.read<CategoryProvider>();
+    final productProvider = context.read<ProductProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
       bannerProvider.loadBanners();
       categoryProvider.loadCategories();
+      productProvider.loadFeaturedProducts();
     });
   }
 
@@ -256,25 +239,30 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 0.78,
-                        ),
-                        itemCount: _featuredProducts.length,
-                        itemBuilder: (context, index) {
-                          final item = _featuredProducts[index];
-                          return _ProductCard(
-                            title: item['title'] as String,
-                            price: item['price'] as String,
-                            oldPrice: item['oldPrice'] as String?,
-                            tag: item['tag'] as String,
-                            icon: item['icon'] as IconData,
+                      child: Consumer<ProductProvider>(
+                        builder: (context, provider, _) {
+                          final items = provider.featuredProducts;
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.78,
+                            ),
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final item = items[index];
+                              return _ProductCard(
+                                title: item.name,
+                                price: _formatPrice(item.price),
+                                oldPrice: null,
+                                tag: item.category?.name ?? '',
+                                imageUrl: item.thumbnailUrl,
+                              );
+                            },
                           );
                         },
                       ),
@@ -307,6 +295,23 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+String _formatPrice(double? price) {
+  if (price == null) {
+    return 'Rp0';
+  }
+  final rounded = price.round();
+  final digits = rounded.toString();
+  final buffer = StringBuffer('Rp');
+  for (var i = 0; i < digits.length; i++) {
+    final indexFromEnd = digits.length - i;
+    buffer.write(digits[i]);
+    if (indexFromEnd > 1 && indexFromEnd % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+  return buffer.toString();
 }
 
 class _PromoCard extends StatelessWidget {
@@ -407,14 +412,14 @@ class _ProductCard extends StatelessWidget {
     required this.price,
     required this.oldPrice,
     required this.tag,
-    required this.icon,
+    this.imageUrl,
   });
 
   final String title;
   final String price;
   final String? oldPrice;
   final String tag;
-  final IconData icon;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -442,29 +447,44 @@ class _ProductCard extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                Positioned(
-                  right: 10,
-                  top: 10,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF7FA88B),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      tag,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
+                if (imageUrl != null && imageUrl!.isNotEmpty)
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const SizedBox.shrink();
+                        },
                       ),
                     ),
                   ),
-                ),
-                Center(
-                  child: Icon(icon, size: 48, color: const Color(0xFFBFA999)),
-                ),
+                if (tag.isNotEmpty)
+                  Positioned(
+                    right: 10,
+                    top: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7FA88B),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        tag,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
