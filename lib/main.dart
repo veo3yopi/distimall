@@ -596,22 +596,36 @@ class _PlaceholderPage extends StatelessWidget {
   }
 }
 
-class ProductDetailPage extends StatelessWidget {
+class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({super.key, required this.product});
 
   final ProductItem product;
 
   @override
-  Widget build(BuildContext context) {
+  State<ProductDetailPage> createState() => _ProductDetailPageState();
+}
+
+class _ProductDetailPageState extends State<ProductDetailPage> {
+  late final Future<ProductItem> _detailFuture;
+
+  @override
+  void initState() {
+    super.initState();
     final repository = context.read<ProductRepository>();
+    _detailFuture = widget.product.id != null
+        ? repository.fetchProductDetail(widget.product.id!)
+        : Future.value(widget.product);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: FutureBuilder<ProductItem>(
-          future: product.id != null
-              ? repository.fetchProductDetail(product.id!)
-              : Future.value(product),
+          future: _detailFuture,
           builder: (context, snapshot) {
-            final detail = snapshot.data ?? product;
+            final detail = snapshot.data ?? widget.product;
+            final images = _resolveImages(detail);
             return Column(
               children: [
                 _DetailAppBar(title: 'Product Detail Page'),
@@ -622,7 +636,7 @@ class ProductDetailPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 12),
-                        _DetailImageCard(imageUrl: _pickMainImage(detail)),
+                        _DetailImageGallery(images: images),
                         const SizedBox(height: 16),
                         Row(
                           children: [
@@ -762,45 +776,99 @@ class _DetailAppBar extends StatelessWidget {
   }
 }
 
-class _DetailImageCard extends StatelessWidget {
-  const _DetailImageCard({required this.imageUrl});
+class _DetailImageGallery extends StatefulWidget {
+  const _DetailImageGallery({required this.images});
 
-  final String? imageUrl;
+  final List<String> images;
+
+  @override
+  State<_DetailImageGallery> createState() => _DetailImageGalleryState();
+}
+
+class _DetailImageGalleryState extends State<_DetailImageGallery> {
+  late final PageController _controller;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
-    return Container(
-      height: 260,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1EEE9),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
+    final images = widget.images;
+    return Column(
+      children: [
+        Container(
+          height: 260,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1EEE9),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 12,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: images.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      _showFullImage(context, images[_currentIndex]);
+                    },
+                    child: PageView.builder(
+                      controller: _controller,
+                      itemCount: images.length,
+                      onPageChanged: (index) {
+                        setState(() => _currentIndex = index);
+                      },
+                      itemBuilder: (context, index) {
+                        return Image.network(
+                          images[index],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const SizedBox.shrink();
+                          },
+                        );
+                      },
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ),
+        if (images.length > 1) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(images.length, (index) {
+              final isActive = index == _currentIndex;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: isActive ? 18 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              );
+            }),
           ),
         ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: hasImage
-            ? GestureDetector(
-                onTap: () {
-                  _showFullImage(context, imageUrl!);
-                },
-                child: Image.network(
-                  imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const SizedBox.shrink();
-                  },
-                ),
-              )
-            : const SizedBox.shrink(),
-      ),
+      ],
     );
   }
 }
@@ -1002,11 +1070,15 @@ String _formatPrice(double? price) {
   return buffer.toString();
 }
 
-String _pickMainImage(ProductItem item) {
-  if (item.images != null && item.images!.isNotEmpty) {
-    return item.images!.first;
+List<String> _resolveImages(ProductItem item) {
+  final images = <String>[];
+  if (item.images != null) {
+    images.addAll(item.images!.where((value) => value.isNotEmpty));
   }
-  return item.thumbnailUrl ?? '';
+  if (images.isEmpty && item.thumbnailUrl != null) {
+    images.add(item.thumbnailUrl!);
+  }
+  return images;
 }
 
 String _stripHtml(String input) {
