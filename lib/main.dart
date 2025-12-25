@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/repositories/banner_repository.dart';
+import 'data/repositories/category_repository.dart';
 import 'data/services/api_client.dart';
 import 'providers/banner_provider.dart';
+import 'providers/category_provider.dart';
 
 void main() {
   runApp(
@@ -15,9 +17,19 @@ void main() {
             apiClient: context.read<ApiClient>(),
           ),
         ),
+        Provider<CategoryRepository>(
+          create: (context) => CategoryRepository(
+            apiClient: context.read<ApiClient>(),
+          ),
+        ),
         ChangeNotifierProvider<BannerProvider>(
           create: (context) => BannerProvider(
             repository: context.read<BannerRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider<CategoryProvider>(
+          create: (context) => CategoryProvider(
+            repository: context.read<CategoryRepository>(),
           ),
         ),
       ],
@@ -70,16 +82,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const _categories = [
-    {'label': 'Makanan', 'icon': Icons.apple},
-    {'label': 'Pakaian', 'icon': Icons.checkroom},
-    {'label': 'Kesehatan', 'icon': Icons.favorite},
-    {'label': 'Kecantikan', 'icon': Icons.brush},
-    {'label': 'Craft', 'icon': Icons.palette},
-    {'label': 'Laundry', 'icon': Icons.local_laundry_service},
-    {'label': 'Cellular', 'icon': Icons.phone_android},
-  ];
-
   static const _featuredProducts = [
     {
       'title': 'Maxi Dress Rayon',
@@ -114,7 +116,15 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<BannerProvider>().loadBanners());
+    final bannerProvider = context.read<BannerProvider>();
+    final categoryProvider = context.read<CategoryProvider>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      bannerProvider.loadBanners();
+      categoryProvider.loadCategories();
+    });
   }
 
   @override
@@ -197,12 +207,9 @@ class _HomePageState extends State<HomePage> {
                             itemBuilder: (context, index) {
                               final item = items[index];
                               return _PromoCard(
-                                title: item.title,
-                                subtitle: item.subtitle,
                                 imageUrl: item.imageUrl,
                                 color: item.backgroundColor ??
                                     const Color(0xFF7DA283),
-                                icon: Icons.local_offer,
                               );
                             },
                             separatorBuilder: (_, _) =>
@@ -215,18 +222,24 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 18),
                     SizedBox(
                       height: 88,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (context, index) {
-                          final item = _categories[index];
-                          return _CategoryItem(
-                            label: item['label'] as String,
-                            icon: item['icon'] as IconData,
+                      child: Consumer<CategoryProvider>(
+                        builder: (context, provider, _) {
+                          final items = provider.categories;
+                          return ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            scrollDirection: Axis.horizontal,
+                            itemBuilder: (context, index) {
+                              final item = items[index];
+                              return _CategoryItem(
+                                label: item.name,
+                                iconUrl: item.iconUrl,
+                              );
+                            },
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 14),
+                            itemCount: items.length,
                           );
                         },
-                        separatorBuilder: (_, _) => const SizedBox(width: 14),
-                        itemCount: _categories.length,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -298,17 +311,11 @@ class _HomePageState extends State<HomePage> {
 
 class _PromoCard extends StatelessWidget {
   const _PromoCard({
-    required this.title,
-    required this.subtitle,
     required this.color,
-    required this.icon,
     this.imageUrl,
   });
 
-  final String title;
-  final String subtitle;
   final Color color;
-  final IconData icon;
   final String? imageUrl;
 
   @override
@@ -316,7 +323,6 @@ class _PromoCard extends StatelessWidget {
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
     return Container(
       width: 150,
-      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(14),
@@ -327,70 +333,32 @@ class _PromoCard extends StatelessWidget {
             offset: Offset(0, 6),
           ),
         ],
-        image: hasImage
-            ? DecorationImage(
-                image: NetworkImage(imageUrl!),
-                fit: BoxFit.cover,
-              )
-            : null,
       ),
-      child: Stack(
-        children: [
-          if (hasImage)
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: Icon(icon, size: 28, color: Colors.white),
-              ),
-              Flexible(
-                child: Text(
-                  title,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    fontSize: 12,
-                    height: 1.1,
-                  ),
-                ),
-              ),
-              Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: hasImage
+            ? Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const SizedBox.shrink();
+                },
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
 }
 
 class _CategoryItem extends StatelessWidget {
-  const _CategoryItem({required this.label, required this.icon});
+  const _CategoryItem({required this.label, this.iconUrl});
 
   final String label;
-  final IconData icon;
+  final String? iconUrl;
 
   @override
   Widget build(BuildContext context) {
+    final hasIcon = iconUrl != null && iconUrl!.isNotEmpty;
     return Column(
       children: [
         Container(
@@ -400,7 +368,25 @@ class _CategoryItem extends StatelessWidget {
             color: Colors.white,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: const Color(0xFF5E8E6F), size: 26),
+          child: hasIcon
+              ? ClipOval(
+                  child: Image.network(
+                    iconUrl!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.category_outlined,
+                        color: Color(0xFF5E8E6F),
+                        size: 26,
+                      );
+                    },
+                  ),
+                )
+              : const Icon(
+                  Icons.category_outlined,
+                  color: Color(0xFF5E8E6F),
+                  size: 26,
+                ),
         ),
         const SizedBox(height: 8),
         Text(

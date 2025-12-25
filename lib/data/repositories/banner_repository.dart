@@ -14,7 +14,34 @@ class BannerRepository {
     return payload
         .whereType<Map<String, dynamic>>()
         .map(BannerItem.fromJson)
+        .map(_resolveImageUrl)
         .toList();
+  }
+
+  BannerItem _resolveImageUrl(BannerItem item) {
+    final imageUrl = item.imageUrl;
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return item;
+    }
+    final uri = Uri.tryParse(imageUrl);
+    if (uri == null) {
+      return item;
+    }
+    if (uri.isAbsolute) {
+      if (uri.host == '127.0.0.1') {
+        final base = Uri.parse(ApiConfig.baseUrl);
+        final updated = uri.replace(
+          host: base.host,
+          port: base.hasPort ? base.port : uri.port,
+          scheme: base.scheme,
+        );
+        return item.copyWith(imageUrl: updated.toString());
+      }
+      return item;
+    }
+    final base = Uri.parse(ApiConfig.baseUrl);
+    final resolved = base.resolveUri(uri);
+    return item.copyWith(imageUrl: resolved.toString());
   }
 
   static const List<BannerItem> dummyBanners = [

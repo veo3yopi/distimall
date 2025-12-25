@@ -9,9 +9,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:distimall/data/repositories/banner_repository.dart';
+import 'package:distimall/data/repositories/category_repository.dart';
 import 'package:distimall/data/services/api_client.dart';
 import 'package:distimall/main.dart';
 import 'package:distimall/providers/banner_provider.dart';
+import 'package:distimall/providers/category_provider.dart';
 
 void main() {
   testWidgets('Home screen loads', (WidgetTester tester) async {
@@ -25,9 +27,19 @@ void main() {
               apiClient: context.read<ApiClient>(),
             ),
           ),
+          Provider<CategoryRepository>(
+            create: (context) => CategoryRepository(
+              apiClient: context.read<ApiClient>(),
+            ),
+          ),
           ChangeNotifierProvider<BannerProvider>(
             create: (context) => BannerProvider(
               repository: context.read<BannerRepository>(),
+            ),
+          ),
+          ChangeNotifierProvider<CategoryProvider>(
+            create: (context) => CategoryProvider(
+              repository: context.read<CategoryRepository>(),
             ),
           ),
         ],
