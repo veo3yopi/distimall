@@ -17,6 +17,12 @@ class ProductRepository {
         .toList();
   }
 
+  Future<ProductItem> fetchProductDetail(int id) async {
+    final payload =
+        await apiClient.getMap('${ApiConfig.productsEndpoint}$id');
+    return ProductItem.fromJson(payload);
+  }
+
   static const List<ProductItem> dummyFeaturedProducts = [
     ProductItem(
       name: 'Maxi Dress Rayon',

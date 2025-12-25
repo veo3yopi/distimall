@@ -21,4 +21,19 @@ class ApiClient {
     }
     throw Exception('Request failed: ${response.statusCode}');
   }
+
+  Future<Map<String, dynamic>> getMap(String url) async {
+    final response = await _client.get(Uri.parse(url));
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        if (decoded['data'] is Map<String, dynamic>) {
+          return decoded['data'] as Map<String, dynamic>;
+        }
+        return decoded;
+      }
+      throw Exception('Unexpected response format');
+    }
+    throw Exception('Request failed: ${response.statusCode}');
+  }
 }

@@ -38,6 +38,9 @@ class ProductItem {
     this.isFeatured,
     this.thumbnailUrl,
     this.category,
+    this.description,
+    this.highlights,
+    this.images,
   });
 
   final int? id;
@@ -48,8 +51,12 @@ class ProductItem {
   final bool? isFeatured;
   final String? thumbnailUrl;
   final ProductCategory? category;
+  final String? description;
+  final List<String>? highlights;
+  final List<String>? images;
 
   factory ProductItem.fromJson(Map<String, dynamic> json) {
+    final images = _stringListOrNull(json['images']);
     return ProductItem(
       id: ProductCategory._intOrNull(json['id']),
       name: (json['name'] ?? '').toString(),
@@ -57,10 +64,16 @@ class ProductItem {
       price: _doubleOrNull(json['price']),
       stock: ProductCategory._intOrNull(json['stock']),
       isFeatured: json['is_featured'] is bool ? json['is_featured'] as bool : null,
-      thumbnailUrl: json['thumbnail_url']?.toString(),
+      thumbnailUrl:
+          json['thumbnail_url']?.toString() ?? (images?.isNotEmpty == true
+              ? images!.first
+              : null),
       category: json['category'] is Map<String, dynamic>
           ? ProductCategory.fromJson(json['category'] as Map<String, dynamic>)
           : null,
+      description: json['description']?.toString(),
+      highlights: _stringListOrNull(json['highlights']),
+      images: images,
     );
   }
 
@@ -72,5 +85,12 @@ class ProductItem {
       return value.toDouble();
     }
     return double.tryParse(value.toString());
+  }
+
+  static List<String>? _stringListOrNull(dynamic value) {
+    if (value is List) {
+      return value.map((item) => item.toString()).toList();
+    }
+    return null;
   }
 }
