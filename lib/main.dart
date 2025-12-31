@@ -11,6 +11,7 @@ import 'providers/banner_provider.dart';
 import 'providers/category_provider.dart';
 import 'providers/product_provider.dart';
 import 'screens/login_page.dart';
+import 'screens/profile_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
@@ -116,7 +117,7 @@ class _RootPageState extends State<RootPage> {
       ),
       ProductsPage(initialQuery: _productsQuery, categoryId: _categoryId),
       const _PlaceholderPage(title: 'Keranjang'),
-      const _PlaceholderPage(title: 'Profil'),
+      const ProfilePage(),
     ];
 
     return Scaffold(

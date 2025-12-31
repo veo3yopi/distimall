@@ -27,7 +27,9 @@ class _LoginPageState extends State<LoginPage> {
         idToken: googleAuth.idToken,
       );
       return await FirebaseAuth.instance.signInWithCredential(credential);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Google Sign-In gagal: $e');
+      debugPrintStack(stackTrace: stackTrace);
       return null;
     }
   }
@@ -165,15 +167,24 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () async {
-                    final UserCredential = await _loginGoogle();
-                    if (UserCredential != null) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => DistyMallApp()),
+                    final credential = await _loginGoogle();
+                    if (!mounted) {
+                      return;
+                    }
+                    if (credential != null) {
+                      Navigator.of(context).pushReplacementNamed('/root');
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Login Google gagal. Cek log untuk detail.',
+                          ),
+                          backgroundColor: Color(0xFF2F5A3D),
+                        ),
                       );
                     }
                   },
-                  child: Text("Login Google"),
+                  child: const Text('Login Google'),
                 ),
               ],
             ),
