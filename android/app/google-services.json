@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "414428666976",
+    "project_id": "disty-899ea",
+    "storage_bucket": "disty-899ea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:414428666976:android:b6d92c93a27289953b7705",
+        "android_client_info": {
+          "package_name": "com.example.distimall"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9lny4l31bSGD-nLUOLAxuqUeEZucL9OE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

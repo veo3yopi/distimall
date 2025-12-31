@@ -10,41 +10,40 @@ import 'data/services/api_client.dart';
 import 'providers/banner_provider.dart';
 import 'providers/category_provider.dart';
 import 'providers/product_provider.dart';
+import 'screens/login_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(
     MultiProvider(
       providers: [
         Provider<ApiClient>(create: (_) => ApiClient()),
         Provider<BannerRepository>(
-          create: (context) => BannerRepository(
-            apiClient: context.read<ApiClient>(),
-          ),
+          create: (context) =>
+              BannerRepository(apiClient: context.read<ApiClient>()),
         ),
         Provider<CategoryRepository>(
-          create: (context) => CategoryRepository(
-            apiClient: context.read<ApiClient>(),
-          ),
+          create: (context) =>
+              CategoryRepository(apiClient: context.read<ApiClient>()),
         ),
         Provider<ProductRepository>(
-          create: (context) => ProductRepository(
-            apiClient: context.read<ApiClient>(),
-          ),
+          create: (context) =>
+              ProductRepository(apiClient: context.read<ApiClient>()),
         ),
         ChangeNotifierProvider<BannerProvider>(
-          create: (context) => BannerProvider(
-            repository: context.read<BannerRepository>(),
-          ),
+          create: (context) =>
+              BannerProvider(repository: context.read<BannerRepository>()),
         ),
         ChangeNotifierProvider<CategoryProvider>(
-          create: (context) => CategoryProvider(
-            repository: context.read<CategoryRepository>(),
-          ),
+          create: (context) =>
+              CategoryProvider(repository: context.read<CategoryRepository>()),
         ),
         ChangeNotifierProvider<ProductProvider>(
-          create: (context) => ProductProvider(
-            repository: context.read<ProductRepository>(),
-          ),
+          create: (context) =>
+              ProductProvider(repository: context.read<ProductRepository>()),
         ),
       ],
       child: const DistyMallApp(),
@@ -62,9 +61,7 @@ class DistyMallApp extends StatelessWidget {
       title: 'Disty Mall',
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFF5E8E6F),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5E8E6F),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5E8E6F)),
         textTheme: const TextTheme(
           headlineSmall: TextStyle(
             fontSize: 22,
@@ -77,13 +74,11 @@ class DistyMallApp extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
-          bodyMedium: TextStyle(
-            fontSize: 14,
-            color: Colors.white,
-          ),
+          bodyMedium: TextStyle(fontSize: 14, color: Colors.white),
         ).apply(fontFamily: 'Georgia'),
       ),
-      home: const RootPage(),
+      routes: {'/root': (_) => const RootPage()},
+      home: const LoginPage(),
     );
   }
 }
@@ -119,26 +114,18 @@ class _RootPageState extends State<RootPage> {
           });
         },
       ),
-      ProductsPage(
-        initialQuery: _productsQuery,
-        categoryId: _categoryId,
-      ),
+      ProductsPage(initialQuery: _productsQuery, categoryId: _categoryId),
       const _PlaceholderPage(title: 'Keranjang'),
       const _PlaceholderPage(title: 'Profil'),
     ];
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: const BoxDecoration(
           color: Color(0xFF5A876A),
-          border: Border(
-            top: BorderSide(color: Color(0x55FFFFFF)),
-          ),
+          border: Border(top: BorderSide(color: Color(0x55FFFFFF))),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -262,16 +249,15 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Icon(Icons.shopping_cart_outlined,
-                      color: Colors.white, size: 26),
+                  const Icon(
+                    Icons.shopping_cart_outlined,
+                    color: Colors.white,
+                    size: 26,
+                  ),
                 ],
               ),
             ),
-            const Divider(
-              height: 1,
-              thickness: 1,
-              color: Color(0x77FFFFFF),
-            ),
+            const Divider(height: 1, thickness: 1, color: Color(0x77FFFFFF)),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -280,8 +266,11 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 18),
                     Column(
                       children: [
-                        Icon(Icons.diamond_outlined,
-                            color: Colors.white, size: 64),
+                        Icon(
+                          Icons.diamond_outlined,
+                          color: Colors.white,
+                          size: 64,
+                        ),
                         const SizedBox(height: 10),
                         Text(
                           'DISTY MALL',
@@ -311,7 +300,8 @@ class _HomePageState extends State<HomePage> {
                               final item = items[index];
                               return _PromoCard(
                                 imageUrl: item.imageUrl,
-                                color: item.backgroundColor ??
+                                color:
+                                    item.backgroundColor ??
                                     const Color(0xFF7DA283),
                               );
                             },
@@ -373,11 +363,11 @@ class _HomePageState extends State<HomePage> {
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 0.78,
-                            ),
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 0.78,
+                                ),
                             itemCount: items.length,
                             itemBuilder: (context, index) {
                               final item = items[index];
@@ -544,11 +534,11 @@ class _ProductsPageState extends State<ProductsPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.78,
-                    ),
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.78,
+                        ),
                     itemCount: items.length,
                     itemBuilder: (context, index) {
                       final item = items[index];
@@ -595,8 +585,9 @@ class _CategoryFilter extends StatelessWidget {
             return name.trim().isNotEmpty;
           }),
         ];
-        final selectedValue =
-            categories.contains(value) ? value : categories.first;
+        final selectedValue = categories.contains(value)
+            ? value
+            : categories.first;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
@@ -610,17 +601,19 @@ class _CategoryFilter extends StatelessWidget {
               icon: const Icon(Icons.expand_more, color: Color(0xFF3F3F3F)),
               style: const TextStyle(color: Color(0xFF3F3F3F), fontSize: 12),
               items: categories
-                  .map((item) => DropdownMenuItem<String>(
-                        value: item,
-                        child: Text(
-                          item,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF3F3F3F),
-                          ),
+                  .map(
+                    (item) => DropdownMenuItem<String>(
+                      value: item,
+                      child: Text(
+                        item,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF3F3F3F),
                         ),
-                      ))
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (value) {
                 if (value != null) {
@@ -631,9 +624,9 @@ class _CategoryFilter extends StatelessWidget {
                       orElse: () => _emptyCategory,
                     );
                     if (category.id != null) {
-                      context
-                          .read<ProductProvider>()
-                          .filterByCategoryId(category.id);
+                      context.read<ProductProvider>().filterByCategoryId(
+                        category.id,
+                      );
                     }
                   } else {
                     context.read<ProductProvider>().loadProducts();
@@ -709,10 +702,7 @@ class _SortFilter extends StatelessWidget {
 }
 
 class _ProductSearchBar extends StatefulWidget {
-  const _ProductSearchBar({
-    required this.controller,
-    required this.onSearch,
-  });
+  const _ProductSearchBar({required this.controller, required this.onSearch});
 
   final TextEditingController controller;
   final ValueChanged<String> onSearch;
@@ -753,15 +743,15 @@ class _ProductSearchBarState extends State<_ProductSearchBar> {
         onSubmitted: (value) => widget.onSearch(value),
         decoration: InputDecoration(
           hintText: 'Cari produk..',
-          hintStyle: const TextStyle(
-            color: Color(0xFF7A9D86),
-            fontSize: 14,
-          ),
+          hintStyle: const TextStyle(color: Color(0xFF7A9D86), fontSize: 14),
           prefixIcon: const Padding(
             padding: EdgeInsets.only(left: 12, right: 6),
             child: Icon(Icons.search, color: Color(0xFF3F3F3F), size: 20),
           ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 0,
+            minHeight: 0,
+          ),
           suffixIcon: hasText
               ? IconButton(
                   icon: const Icon(Icons.close, color: Color(0xFF7A9D86)),
@@ -775,10 +765,7 @@ class _ProductSearchBarState extends State<_ProductSearchBar> {
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
-        style: const TextStyle(
-          color: Color(0xFF3F3F3F),
-          fontSize: 14,
-        ),
+        style: const TextStyle(color: Color(0xFF3F3F3F), fontSize: 14),
       ),
     );
   }
@@ -794,10 +781,7 @@ class _PlaceholderPage extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
         ),
       ),
     );
@@ -860,16 +844,31 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             ),
                             Row(
                               children: [
-                                const Icon(Icons.star,
-                                    color: Color(0xFFF2C94C), size: 16),
-                                const Icon(Icons.star,
-                                    color: Color(0xFFF2C94C), size: 16),
-                                const Icon(Icons.star,
-                                    color: Color(0xFFF2C94C), size: 16),
-                                const Icon(Icons.star,
-                                    color: Color(0xFFF2C94C), size: 16),
-                                const Icon(Icons.star_half,
-                                    color: Color(0xFFF2C94C), size: 16),
+                                const Icon(
+                                  Icons.star,
+                                  color: Color(0xFFF2C94C),
+                                  size: 16,
+                                ),
+                                const Icon(
+                                  Icons.star,
+                                  color: Color(0xFFF2C94C),
+                                  size: 16,
+                                ),
+                                const Icon(
+                                  Icons.star,
+                                  color: Color(0xFFF2C94C),
+                                  size: 16,
+                                ),
+                                const Icon(
+                                  Icons.star,
+                                  color: Color(0xFFF2C94C),
+                                  size: 16,
+                                ),
+                                const Icon(
+                                  Icons.star_half,
+                                  color: Color(0xFFF2C94C),
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 6),
                                 const Text(
                                   '4.9',
@@ -930,10 +929,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                   ),
                 ),
-                _DetailBottomBar(
-                  onAddToCart: () {},
-                  onBuy: () {},
-                ),
+                _DetailBottomBar(onAddToCart: () {}, onBuy: () {}),
               ],
             );
           },
@@ -1173,16 +1169,15 @@ class _ReviewSection extends StatelessWidget {
                   children: [
                     Row(
                       children: const [
-                        Icon(Icons.star,
-                            color: Color(0xFFF2C94C), size: 12),
-                        Icon(Icons.star,
-                            color: Color(0xFFF2C94C), size: 12),
-                        Icon(Icons.star,
-                            color: Color(0xFFF2C94C), size: 12),
-                        Icon(Icons.star,
-                            color: Color(0xFFF2C94C), size: 12),
-                        Icon(Icons.star_half,
-                            color: Color(0xFFF2C94C), size: 12),
+                        Icon(Icons.star, color: Color(0xFFF2C94C), size: 12),
+                        Icon(Icons.star, color: Color(0xFFF2C94C), size: 12),
+                        Icon(Icons.star, color: Color(0xFFF2C94C), size: 12),
+                        Icon(Icons.star, color: Color(0xFFF2C94C), size: 12),
+                        Icon(
+                          Icons.star_half,
+                          color: Color(0xFFF2C94C),
+                          size: 12,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -1334,10 +1329,7 @@ void _showFullImage(BuildContext context, String imageUrl) {
 }
 
 class _PromoCard extends StatelessWidget {
-  const _PromoCard({
-    required this.color,
-    this.imageUrl,
-  });
+  const _PromoCard({required this.color, this.imageUrl});
 
   final Color color;
   final String? imageUrl;
@@ -1375,11 +1367,7 @@ class _PromoCard extends StatelessWidget {
 }
 
 class _CategoryItem extends StatelessWidget {
-  const _CategoryItem({
-    required this.label,
-    this.iconUrl,
-    this.onTap,
-  });
+  const _CategoryItem({required this.label, this.iconUrl, this.onTap});
 
   final String label;
   final String? iconUrl;
@@ -1423,10 +1411,7 @@ class _CategoryItem extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
         ],
       ),
@@ -1457,115 +1442,115 @@ class _ProductCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 90,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4F0EC),
-              borderRadius: BorderRadius.circular(12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 10,
+              offset: Offset(0, 6),
             ),
-            child: Stack(
-              children: [
-                if (imageUrl != null && imageUrl!.isNotEmpty)
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                  ),
-                if (tag.isNotEmpty)
-                  Positioned(
-                    right: 10,
-                    top: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF7FA88B),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        tag,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 90,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F0EC),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Stack(
+                children: [
+                  if (imageUrl != null && imageUrl!.isNotEmpty)
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const SizedBox.shrink();
+                          },
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF3D3D3D),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              _buildStar(),
-              _buildStar(),
-              _buildStar(),
-              _buildStar(),
-              _buildStar(active: false),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Text(
-                price,
-                style: const TextStyle(
-                  color: Color(0xFF3D3D3D),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
+                  if (tag.isNotEmpty)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7FA88B),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          tag,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              if (oldPrice != null) ...[
-                const SizedBox(width: 6),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFF3D3D3D),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                _buildStar(),
+                _buildStar(),
+                _buildStar(),
+                _buildStar(),
+                _buildStar(active: false),
+              ],
+            ),
+            const Spacer(),
+            Row(
+              children: [
                 Text(
-                  oldPrice!,
+                  price,
                   style: const TextStyle(
-                    color: Color(0xFF9FA3A0),
-                    fontSize: 10,
-                    decoration: TextDecoration.lineThrough,
+                    color: Color(0xFF3D3D3D),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
                   ),
                 ),
+                if (oldPrice != null) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    oldPrice!,
+                    style: const TextStyle(
+                      color: Color(0xFF9FA3A0),
+                      fontSize: 10,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1603,10 +1588,7 @@ class _BottomNavItem extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(color: color, fontSize: 11),
-          ),
+          Text(label, style: TextStyle(color: color, fontSize: 11)),
         ],
       ),
     );
