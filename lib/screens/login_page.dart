@@ -13,6 +13,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoggingInGoogle = false;
 
   Future<UserCredential?> _loginGoogle() async {
     try {
@@ -74,19 +75,38 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
+  Future<void> _handleGoogleLogin() async {
+    if (_isLoggingInGoogle) {
+      return;
+    }
+    setState(() {
+      _isLoggingInGoogle = true;
+    });
+
+    final credential = await _loginGoogle();
+    if (!mounted) {
+      return;
+    }
+    if (credential != null) {
+      Navigator.of(context).pushReplacementNamed('/root');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login Google gagal. Cek log untuk detail.'),
+          backgroundColor: Color(0xFF2F5A3D),
+        ),
+      );
+    }
+
+    setState(() {
+      _isLoggingInGoogle = false;
+    });
+  }
+
   void _handleSignUp() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Fitur Sign Up belum tersedia.'),
-        backgroundColor: Color(0xFF2F5A3D),
-      ),
-    );
-  }
-
-  void _handleGoogleLogin() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Login dengan Google belum tersedia.'),
         backgroundColor: Color(0xFF2F5A3D),
       ),
     );
@@ -166,25 +186,18 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () async {
-                    final credential = await _loginGoogle();
-                    if (!mounted) {
-                      return;
-                    }
-                    if (credential != null) {
-                      Navigator.of(context).pushReplacementNamed('/root');
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Login Google gagal. Cek log untuk detail.',
+                  onPressed: _isLoggingInGoogle ? null : _handleGoogleLogin,
+                  child: _isLoggingInGoogle
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
-                          backgroundColor: Color(0xFF2F5A3D),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Login Google'),
+                        )
+                      : const Text('Login Google'),
                 ),
               ],
             ),
