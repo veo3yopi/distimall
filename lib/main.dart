@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'data/models/cart_item.dart';
 import 'data/models/category_item.dart';
 import 'data/models/product_item.dart';
 import 'data/repositories/banner_repository.dart';
@@ -8,6 +9,7 @@ import 'data/repositories/category_repository.dart';
 import 'data/repositories/product_repository.dart';
 import 'data/services/api_client.dart';
 import 'providers/banner_provider.dart';
+import 'providers/cart_provider.dart';
 import 'providers/category_provider.dart';
 import 'providers/product_provider.dart';
 import 'screens/login_page.dart';
@@ -37,6 +39,9 @@ void main() async {
         ChangeNotifierProvider<BannerProvider>(
           create: (context) =>
               BannerProvider(repository: context.read<BannerRepository>()),
+        ),
+        ChangeNotifierProvider<CartProvider>(
+          create: (_) => CartProvider(),
         ),
         ChangeNotifierProvider<CategoryProvider>(
           create: (context) =>
@@ -116,7 +121,7 @@ class _RootPageState extends State<RootPage> {
         },
       ),
       ProductsPage(initialQuery: _productsQuery, categoryId: _categoryId),
-      const _PlaceholderPage(title: 'Keranjang'),
+      const CartPage(),
       const ProfilePage(),
     ];
 
@@ -772,6 +777,268 @@ class _ProductSearchBarState extends State<_ProductSearchBar> {
   }
 }
 
+class CartPage extends StatelessWidget {
+  const CartPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              'KERANJANG',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: Consumer<CartProvider>(
+                builder: (context, provider, _) {
+                  if (provider.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Keranjang masih kosong',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemBuilder: (context, index) {
+                      final item = provider.items[index];
+                      return _CartItemTile(
+                        item: item,
+                        onDecrease: () {
+                          provider.updateQuantity(
+                            item.product,
+                            item.quantity - 1,
+                          );
+                        },
+                        onIncrease: () {
+                          provider.updateQuantity(
+                            item.product,
+                            item.quantity + 1,
+                          );
+                        },
+                        onRemove: () {
+                          provider.removeProduct(item.product);
+                        },
+                      );
+                    },
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemCount: provider.items.length,
+                  );
+                },
+              ),
+            ),
+            Consumer<CartProvider>(
+              builder: (context, provider, _) {
+                return Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF5A876A),
+                    border: Border(
+                      top: BorderSide(color: Color(0x55FFFFFF)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Total',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              _formatPrice(provider.totalPrice),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF5E8E6F),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: provider.isEmpty ? null : () {},
+                        child: const Text(
+                          'Checkout',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CartItemTile extends StatelessWidget {
+  const _CartItemTile({
+    required this.item,
+    required this.onDecrease,
+    required this.onIncrease,
+    required this.onRemove,
+  });
+
+  final CartItem item;
+  final VoidCallback onDecrease;
+  final VoidCallback onIncrease;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final images = _resolveImages(item.product);
+    final imageUrl =
+        images.isNotEmpty ? images.first : item.product.thumbnailUrl;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F0EC),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: imageUrl != null && imageUrl.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF3D3D3D),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.product.category?.name ?? '',
+                  style: const TextStyle(
+                    color: Color(0xFF8A8A8A),
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _formatPrice(item.product.price),
+                  style: const TextStyle(
+                    color: Color(0xFF3D3D3D),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: onRemove,
+                color: const Color(0xFF9FA3A0),
+              ),
+              Row(
+                children: [
+                  _QtyButton(icon: Icons.remove, onPressed: onDecrease),
+                  const SizedBox(width: 6),
+                  Text(
+                    item.quantity.toString(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF3D3D3D),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  _QtyButton(icon: Icons.add, onPressed: onIncrease),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QtyButton extends StatelessWidget {
+  const _QtyButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4F0EC),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: const Color(0xFF5E8E6F)),
+      ),
+    );
+  }
+}
+
 class _PlaceholderPage extends StatelessWidget {
   const _PlaceholderPage({required this.title});
 
@@ -930,7 +1197,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                   ),
                 ),
-                _DetailBottomBar(onAddToCart: () {}, onBuy: () {}),
+                _DetailBottomBar(
+                  onAddToCart: () {
+                    context.read<CartProvider>().addProduct(detail);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Produk ditambahkan ke keranjang'),
+                      ),
+                    );
+                  },
+                  onBuy: () {},
+                ),
               ],
             );
           },
