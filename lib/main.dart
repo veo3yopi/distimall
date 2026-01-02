@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'data/models/cart_item.dart';
 import 'data/models/category_item.dart';
@@ -8,9 +9,11 @@ import 'data/repositories/banner_repository.dart';
 import 'data/repositories/category_repository.dart';
 import 'data/repositories/product_repository.dart';
 import 'data/services/api_client.dart';
+import 'data/services/auth_session.dart';
 import 'providers/banner_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/category_provider.dart';
+import 'providers/nav_provider.dart';
 import 'providers/product_provider.dart';
 import 'screens/login_page.dart';
 import 'screens/profile_page.dart';
@@ -42,6 +45,9 @@ void main() async {
         ),
         ChangeNotifierProvider<CartProvider>(
           create: (_) => CartProvider(),
+        ),
+        ChangeNotifierProvider<NavProvider>(
+          create: (_) => NavProvider(),
         ),
         ChangeNotifierProvider<CategoryProvider>(
           create: (context) =>
@@ -81,10 +87,45 @@ class DistyMallApp extends StatelessWidget {
             color: Colors.white,
           ),
           bodyMedium: TextStyle(fontSize: 14, color: Colors.white),
-        ).apply(fontFamily: 'Georgia'),
-      ),
-      routes: {'/root': (_) => const RootPage()},
-      home: const LoginPage(),
+      ).apply(fontFamily: 'Georgia'),
+    ),
+    routes: {'/root': (_) => const RootPage()},
+    home: const AuthGate(),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.data != null) {
+          return const RootPage();
+        }
+        return FutureBuilder<bool>(
+          future: AuthSession.isManualLoggedIn(),
+          builder: (context, manualSnapshot) {
+            if (manualSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (manualSnapshot.data == true) {
+              return const RootPage();
+            }
+            return const LoginPage();
+          },
+        );
+      },
     );
   }
 }
@@ -97,27 +138,28 @@ class RootPage extends StatefulWidget {
 }
 
 class _RootPageState extends State<RootPage> {
-  int _currentIndex = 0;
+  static final _navKey = GlobalKey<NavigatorState>();
   String? _productsQuery;
   int? _categoryId;
 
   @override
   Widget build(BuildContext context) {
+    final navProvider = context.watch<NavProvider>();
     final pages = [
       HomePage(
         onSearchSubmitted: (query) {
           setState(() {
             _productsQuery = query;
             _categoryId = null;
-            _currentIndex = 1;
           });
+          navProvider.setIndex(1);
         },
         onCategorySelected: (categoryId) {
           setState(() {
             _categoryId = categoryId;
             _productsQuery = null;
-            _currentIndex = 1;
           });
+          navProvider.setIndex(1);
         },
       ),
       ProductsPage(initialQuery: _productsQuery, categoryId: _categoryId),
@@ -125,42 +167,60 @@ class _RootPageState extends State<RootPage> {
       const ProfilePage(),
     ];
 
-    return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: pages),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: const BoxDecoration(
-          color: Color(0xFF5A876A),
-          border: Border(top: BorderSide(color: Color(0x55FFFFFF))),
+    return WillPopScope(
+      onWillPop: () async {
+        if (_navKey.currentState?.canPop() ?? false) {
+          _navKey.currentState?.pop();
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        body: Navigator(
+          key: _navKey,
+          onPopPage: (route, result) => route.didPop(result),
+          onGenerateRoute: (_) => MaterialPageRoute<void>(
+            builder: (_) => IndexedStack(
+              index: navProvider.currentIndex,
+              children: pages,
+            ),
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
+        bottomNavigationBar: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: const BoxDecoration(
+            color: Color(0xFF5A876A),
+            border: Border(top: BorderSide(color: Color(0x55FFFFFF))),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
             _BottomNavItem(
               icon: Icons.home_filled,
               label: 'Home',
-              isActive: _currentIndex == 0,
-              onTap: () => setState(() => _currentIndex = 0),
+              isActive: navProvider.currentIndex == 0,
+              onTap: () => navProvider.setIndex(0),
             ),
             _BottomNavItem(
               icon: Icons.inventory_2_outlined,
               label: 'Produk',
-              isActive: _currentIndex == 1,
-              onTap: () => setState(() => _currentIndex = 1),
+              isActive: navProvider.currentIndex == 1,
+              onTap: () => navProvider.setIndex(1),
             ),
             _BottomNavItem(
               icon: Icons.shopping_bag_outlined,
               label: 'Keranjang',
-              isActive: _currentIndex == 2,
-              onTap: () => setState(() => _currentIndex = 2),
+              isActive: navProvider.currentIndex == 2,
+              onTap: () => navProvider.setIndex(2),
             ),
             _BottomNavItem(
               icon: Icons.person_outline,
               label: 'Profil',
-              isActive: _currentIndex == 3,
-              onTap: () => setState(() => _currentIndex = 3),
+              isActive: navProvider.currentIndex == 3,
+              onTap: () => navProvider.setIndex(3),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -255,10 +315,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Icon(
-                    Icons.shopping_cart_outlined,
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart_outlined, size: 26),
                     color: Colors.white,
-                    size: 26,
+                    onPressed: () {
+                      context.read<NavProvider>().setIndex(2);
+                    },
                   ),
                 ],
               ),
@@ -1249,8 +1311,14 @@ class _DetailAppBar extends StatelessWidget {
               ),
             ),
           ),
-          const Icon(Icons.shopping_cart_outlined, color: Color(0xFF5E8E6F)),
-          const SizedBox(width: 12),
+          IconButton(
+            icon: const Icon(Icons.shopping_cart_outlined),
+            color: const Color(0xFF5E8E6F),
+            onPressed: () {
+              context.read<NavProvider>().setIndex(2);
+              Navigator.of(context).pop();
+            },
+          ),
           const Icon(Icons.chat_bubble_outline, color: Color(0xFF5E8E6F)),
         ],
       ),

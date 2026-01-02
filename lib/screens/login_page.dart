@@ -1,7 +1,8 @@
-import 'package:distimall/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../data/services/auth_session.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -45,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (_isSubmitting) {
       return;
     }
@@ -60,6 +61,10 @@ class _LoginPageState extends State<LoginPage> {
         email.toLowerCase() == 'admin@mail.com' && password == 'admin';
 
     if (isValid) {
+      await AuthSession.setManualLoggedIn(true);
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pushReplacementNamed('/root');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,6 +93,10 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
     if (credential != null) {
+      await AuthSession.setManualLoggedIn(false);
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pushReplacementNamed('/root');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
