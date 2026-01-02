@@ -501,6 +501,7 @@ class _ProductsPageState extends State<ProductsPage> {
         _selectedCategory = 'Semua';
         productProvider.filterByCategoryId(widget.categoryId);
       } else if (query.isNotEmpty) {
+        _selectedCategory = 'Semua';
         productProvider.searchProducts(query);
       } else {
         productProvider.loadProducts();
@@ -528,6 +529,9 @@ class _ProductsPageState extends State<ProductsPage> {
           }
           context.read<ProductProvider>().filterByCategoryId(newCategoryId);
         } else if (newQuery.isNotEmpty) {
+          if (_selectedCategory != 'Semua') {
+            setState(() => _selectedCategory = 'Semua');
+          }
           context.read<ProductProvider>().searchProducts(newQuery);
         } else {
           context.read<ProductProvider>().loadProducts();
